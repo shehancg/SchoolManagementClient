@@ -5,12 +5,13 @@ import { Teacher } from "../../interfaces/teacherInterface";
 import Swal from "sweetalert2";
 
 const TeacherRegistration: React.FC = () => {
-  // State variables to store teacher details and error messages
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [contactNo, setContactNo] = useState("");
   const [emailAddress, setEmail] = useState("");
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [isUpdateMode, setIsUpdateMode] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
 
   const [firstNameError, setFirstNameError] = useState("");
   const [contactNoError, setContactNoError] = useState("");
@@ -29,11 +30,9 @@ const TeacherRegistration: React.FC = () => {
     }
   };
 
-  // Function to validate the form before submission
   const validateForm = () => {
     let isValid = true;
 
-    // Validate First Name
     if (!firstName.trim()) {
       setFirstNameError("First Name is required");
       isValid = false;
@@ -53,7 +52,6 @@ const TeacherRegistration: React.FC = () => {
       setContactNoError("");
     }
 
-    // Validate Email
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailAddress.trim()) {
       setEmailError("Email Address is required");
@@ -68,77 +66,103 @@ const TeacherRegistration: React.FC = () => {
     return isValid;
   };
 
-  // Function to handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-  
-    // Check if the form is valid before submitting
+
     if (validateForm()) {
-      // Perform further actions like saving teacher details to the database
       const teacherData = {
+        teacherID: selectedTeacher?.teacherID,
         firstName,
         lastName,
         contactNo,
         emailAddress,
       };
-  
+      console.log(teacherData);
       try {
-        // Send the teacher data to the API using axios
-        const response = await api.post("/api/Teacher", teacherData);
-  
-        // Handle the API response here if needed
-        console.log("Teacher added:", response.data);
-  
-        // Show a success SweetAlert notification
+        if (isUpdateMode && selectedTeacher) {
+          // Update teacher
+          const response = await api.put(`/api/teacher/${selectedTeacher.teacherID}`,teacherData
+          );
+          console.log("Teacher updated:", response.data);
+        } else {
+          // Add new teacher
+          const response = await api.post("/api/teacher", teacherData);
+          console.log("Teacher added:", response.data);
+        }
+
         Swal.fire({
           icon: "success",
           title: "Success",
-          text: "Teacher registered successfully!",
+          text: isUpdateMode
+            ? "Teacher updated successfully!"
+            : "Teacher registered successfully!",
         });
-  
+
         fetchTeachers();
-  
-        // Clear the form fields after successful submission
+
         setFirstName("");
         setLastName("");
         setContactNo("");
         setEmail("");
-  
-        // Clear error messages
+        setIsUpdateMode(false);
+        setSelectedTeacher(null);
+
         setFirstNameError("");
         setContactNoError("");
         setEmailError("");
       } catch (error: any) {
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "A teacher with the same ContactNo already exists.",
-          });
-          // Handle other errors
-          //console.error("Error adding teacher:", error.response.data);
-        
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: isUpdateMode
+            ? "Error updating teacher"
+            : "A teacher with the same ContactNo already exists.",
+        });
       }
     }
   };
-  
 
   const handleCancel = () => {
-    // Clear the form fields
     setFirstName("");
     setLastName("");
     setContactNo("");
     setEmail("");
+    setIsUpdateMode(false);
+    setSelectedTeacher(null);
 
-    // Clear error messages
-    setFirstNameError("");
     setFirstNameError("");
     setContactNoError("");
     setEmailError("");
   };
 
+  const handleEdit = (teacher: Teacher) => {
+    setIsUpdateMode(true);
+    setSelectedTeacher(teacher);
+    setFirstName(teacher.firstName);
+    setLastName(teacher.lastName);
+    setContactNo(teacher.contactNo);
+    setEmail(teacher.emailAddress);
+  };
+
+  const handleDelete = async (teacherID: number) => {
+    try {
+      await api.delete(`/api/teacher/${teacherID}`);
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Teacher deleted successfully!",
+      });
+      fetchTeachers();
+    } catch (error: any) {
+      console.error("Error deleting teacher:", error);
+    }
+  };
+
   return (
-    <div style={{ paddingTop:40, paddingBottom:40 }}>
-      <h2 style={{ textAlign:"center", paddingBottom:10 }}>Teacher Registration</h2>
+    <div style={{ paddingTop: 40, paddingBottom: 40 }}>
+      <h2 style={{ textAlign: "center", paddingBottom: 10 }}>
+        Teacher Registration
+      </h2>
       <Form onSubmit={handleSubmit}>
         <FormGroup>
           <Label for="firstName">First Name *</Label>
@@ -152,7 +176,7 @@ const TeacherRegistration: React.FC = () => {
           {firstNameError && <div className="error">{firstNameError}</div>}
         </FormGroup>
         <FormGroup>
-          <Label for="lastName">Last Name</Label>
+          <Label for="lastName">Last Name *</Label>
           <Input
             type="text"
             name="lastName"
@@ -184,8 +208,12 @@ const TeacherRegistration: React.FC = () => {
           {emailError && <div className="error">{emailError}</div>}
         </FormGroup>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <Button type="submit" color="primary" style={{ marginBottom: "8px" }}>
-            Register
+          <Button
+            type="submit"
+            color={isUpdateMode ? "success" : "primary"}
+            style={{ marginBottom: "8px" }}
+          >
+            {isUpdateMode ? "Update" : "Register"}
           </Button>
           <Button
             outline
@@ -198,7 +226,7 @@ const TeacherRegistration: React.FC = () => {
           </Button>
         </div>
       </Form>
-      <br></br>
+      <br />
       <Table striped>
         <thead>
           <tr>
@@ -206,6 +234,7 @@ const TeacherRegistration: React.FC = () => {
             <th>Last Name</th>
             <th>Contact No</th>
             <th>Email Address</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -215,6 +244,35 @@ const TeacherRegistration: React.FC = () => {
               <td>{teacher.lastName}</td>
               <td>{teacher.contactNo}</td>
               <td>{teacher.emailAddress}</td>
+              <td>
+                <Button
+                  color="info"
+                  onClick={() => handleEdit(teacher)}
+                  style={{ marginRight: "8px" }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  color="danger"
+                  onClick={() => {
+                    Swal.fire({
+                      title: "Delete Teacher?",
+                      text: "Are you sure you want to delete this teacher?",
+                      icon: "warning",
+                      showCancelButton: true,
+                      confirmButtonColor: "#d33",
+                      cancelButtonColor: "#3085d6",
+                      confirmButtonText: "Yes, delete it!",
+                    }).then((result) => {
+                      if (result.isConfirmed) {
+                        handleDelete(teacher.teacherID);
+                      }
+                    });
+                  }}
+                >
+                  Delete
+                </Button>
+              </td>
             </tr>
           ))}
         </tbody>
