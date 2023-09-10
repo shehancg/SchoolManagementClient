@@ -1,0 +1,23 @@
+// components/Card.sass
+
+.custom-card
+  display: flex
+  background-color: #fff
+  border-radius: 10px
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1)
+  width: 500px
+  max-width: 100%
+  margin-bottom: 20px
+  height: 100px  // Set the desired height here
+
+  .custom-card-image
+    width: 100px
+    height: 100%  // Decrease the image height to fill the entire card height
+    border-radius: 10px 0 0 10px
+    object-fit: cover
+
+  .card-body
+    display: flex
+    flex-direction: column
+    justify-content: center  // Vertically align the title
+    flex: 1
